@@ -1,6 +1,7 @@
 CC = gcc
 CFLAGS := -c -Wall -Werror
 INCLUDES := -I.
+LDFLAGS := -lpthread
 
 
 .PHONY : all
