@@ -222,8 +222,6 @@ int main(int argc, char *argv[])
 
 	task_start(0, TYPE1, 1);
 	task_start(1, TYPE1, 1);
-	task_wait(1, TYPE1);
-	task_wait(0, TYPE1);
 
 	task_start(0, TYPE2, 5);
 	task_start(0, TYPE1, 2);
