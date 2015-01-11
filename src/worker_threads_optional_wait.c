@@ -174,9 +174,10 @@ void task_wait(int task, int type)
 
 void app_init()
 {
+	int i;
 	pt_info *info = NULL;
 
-	for (int i = 0; i < TASK_NB; i++) {
+	for (i = 0; i < TASK_NB; i++) {
 		info = &(shared_info[i][TYPE1]);
 
 		info->task = i;
@@ -196,7 +197,7 @@ void app_init()
 		task_wait(i, TYPE1);
 	}
 
-	for (int i = 0; i < TASK_NB; i++) {
+	for (i = 0; i < TASK_NB; i++) {
 		info = &(shared_info[i][TYPE2]);
 
 		info->task = i;
@@ -219,10 +220,12 @@ void app_init()
 
 void app_exit()
 {
+	int i;
+	int d;
 	pt_info *info = NULL;
 
-	for (int i = 0; i < TASK_NB; i++) {
-		for (int d = 0; d < 2; d++) {
+	for (i = 0; i < TASK_NB; i++) {
+		for (d = 0; d < 2; d++) {
 			info = &(shared_info[i][d]);
 
 			// ensure the worker is waiting
