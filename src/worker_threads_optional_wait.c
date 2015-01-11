@@ -24,8 +24,6 @@ typedef struct pt_info {
 	enum pt_state state;
 	pthread_cond_t work_cond;
 	pthread_mutex_t work_mtx;
-	pthread_cond_t boss_cond;
-	pthread_mutex_t boss_mtx;
 } pt_info;
 
 pthread_t threads[TASK_NB][2];
@@ -42,15 +40,8 @@ void *task_type1(void *arg)
 
 	printf("<worker %i:%i> start\n", task, TYPE1);
 
-	// ensure boss is waiting
-	pthread_mutex_lock(&(info->boss_mtx));
-
 	// signal to boss that setup is complete
 	info->state = IDLE;
-
-	// wake-up signal
-	pthread_cond_signal(&(info->boss_cond));
-	pthread_mutex_unlock(&(info->boss_mtx));
 
 	while (1) {
 		pthread_cond_wait(&(info->work_cond), &(info->work_mtx));
@@ -72,15 +63,8 @@ void *task_type1(void *arg)
 		usleep(size*1000000);
 		printf("<worker %i:%i> JOB end\n", task, TYPE1);
 
-		// ensure boss is waiting
-		pthread_mutex_lock(&(info->boss_mtx));
-
 		// indicate that job is done
 		info->state = IDLE;
-
-		// wake-up signal
-		pthread_cond_signal(&(info->boss_cond));
-		pthread_mutex_unlock(&(info->boss_mtx));
 	}
 
 	pthread_mutex_unlock(&(info->work_mtx));
@@ -98,15 +82,8 @@ void *task_type2(void *arg)
 
 	printf("<worker %i:%i> start\n", task, TYPE2);
 
-	// ensure boss is waiting
-	pthread_mutex_lock(&(info->boss_mtx));
-
 	// signal to boss that setup is complete
 	info->state = IDLE;
-
-	// wake-up signal
-	pthread_cond_signal(&(info->boss_cond));
-	pthread_mutex_unlock(&(info->boss_mtx));
 
 	while (1) {
 		pthread_cond_wait(&(info->work_cond), &(info->work_mtx));
@@ -128,15 +105,8 @@ void *task_type2(void *arg)
 		usleep(size*1000000);
 		printf("<worker %i:%i> JOB end\n", task, TYPE2);
 
-		// ensure boss is waiting
-		pthread_mutex_lock(&(info->boss_mtx));
-
 		// indicate that job is done
 		info->state = IDLE;
-
-		// wake-up signal
-		pthread_cond_signal(&(info->boss_cond));
-		pthread_mutex_unlock(&(info->boss_mtx));
 	}
 
 	pthread_mutex_unlock(&(info->work_mtx));
@@ -164,12 +134,17 @@ void task_wait(int task, int type)
 	pt_info *info = &(shared_info[task][type]);
 
 	while (1) {
-		pthread_cond_wait(&(info->boss_cond), &(info->boss_mtx));
+		// ensure worker is waiting
+		pthread_mutex_lock(&(info->work_mtx));
 
 		if (IDLE == info->state) {
 			break;
 		}
+
+		pthread_mutex_unlock(&(info->work_mtx));
 	}
+
+	pthread_mutex_unlock(&(info->work_mtx));
 }
 
 void app_init()
@@ -186,10 +161,6 @@ void app_init()
 
 		pthread_cond_init(&(info->work_cond), NULL);
 		pthread_mutex_init(&(info->work_mtx), NULL);
-		pthread_cond_init(&(info->boss_cond), NULL);
-		pthread_mutex_init(&(info->boss_mtx), NULL);
-
-		pthread_mutex_lock(&(info->boss_mtx));
 
 		pthread_create(&threads[i][TYPE1], NULL, task_type1,
 			       (void *)info);
@@ -206,10 +177,6 @@ void app_init()
 
 		pthread_cond_init(&(info->work_cond), NULL);
 		pthread_mutex_init(&(info->work_mtx), NULL);
-		pthread_cond_init(&(info->boss_cond), NULL);
-		pthread_mutex_init(&(info->boss_mtx), NULL);
-
-		pthread_mutex_lock(&(info->boss_mtx));
 
 		pthread_create(&threads[i][TYPE2], NULL, task_type2,
 			       (void *)info);
@@ -243,11 +210,6 @@ void app_exit()
 
 			pthread_mutex_destroy(&(info->work_mtx));
 			pthread_cond_destroy(&(info->work_cond));
-
-			pthread_mutex_unlock(&(info->boss_mtx));
-			pthread_mutex_destroy(&(info->boss_mtx));
-			pthread_cond_destroy(&(info->boss_cond));
-
 		}
 	}
 }
